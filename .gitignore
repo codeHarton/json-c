@@ -109,3 +109,12 @@
 /include
 /libjson-c.a
 /libjson-c.so
+
+win32/.vs/
+win32/Debug/
+win32/Release/
+win32/x64/
+
+*.vcxproj.user
+*.VC.opendb
+*.sdf
