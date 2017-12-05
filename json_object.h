@@ -324,7 +324,7 @@ JSON_EXPORT void json_object_set_userdata(json_object *jso, void *userdata,
  * @param user_delete an optional function from freeing userdata
  */
 JSON_EXPORT void json_object_set_serializer(json_object *jso,
-	json_object_to_json_string_fn to_string_func,
+	json_object_to_json_string_fn *to_string_func,
 	void *userdata,
 	json_object_delete_fn *user_delete);
 
@@ -1009,7 +1009,7 @@ json_c_shallow_copy_fn json_c_shallow_copy_default;
  *          or if the destination pointer is non-NULL
  */
 
-JSON_EXPORT int json_object_deep_copy(struct json_object *src, struct json_object **dst, json_c_shallow_copy_fn shallow_copy); 
+JSON_EXPORT int json_object_deep_copy(struct json_object *src, struct json_object **dst, json_c_shallow_copy_fn *shallow_copy); 
 #ifdef __cplusplus
 }
 #endif

@@ -269,7 +269,7 @@ void json_object_set_userdata(json_object *jso, void *userdata,
 /* set a custom conversion to string */
 
 void json_object_set_serializer(json_object *jso,
-	json_object_to_json_string_fn to_string_func,
+	json_object_to_json_string_fn *to_string_func,
 	void *userdata,
 	json_object_delete_fn *user_delete)
 {
@@ -1374,7 +1374,7 @@ int json_c_shallow_copy_default(json_object *src, json_object *parent, const cha
  *
  * Note: caller is responsible for freeing *dst if this fails and returns -1.
  */
-static int json_object_deep_copy_recursive(struct json_object *src, struct json_object *parent, const char *key_in_parent, size_t index_in_parent, struct json_object **dst, json_c_shallow_copy_fn shallow_copy)
+static int json_object_deep_copy_recursive(struct json_object *src, struct json_object *parent, const char *key_in_parent, size_t index_in_parent, struct json_object **dst, json_c_shallow_copy_fn *shallow_copy)
 {
 	struct json_object_iter iter;
 	size_t src_array_len, ii;
@@ -1443,7 +1443,7 @@ static int json_object_deep_copy_recursive(struct json_object *src, struct json_
 	return 0;
 }
 
-int json_object_deep_copy(struct json_object *src, struct json_object **dst, json_c_shallow_copy_fn shallow_copy)
+int json_object_deep_copy(struct json_object *src, struct json_object **dst, json_c_shallow_copy_fn *shallow_copy)
 {
 	int rc;
 
