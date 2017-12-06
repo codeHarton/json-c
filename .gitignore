@@ -118,3 +118,8 @@ win32/x64/
 *.vcxproj.user
 *.VC.opendb
 *.sdf
+
+.idea/
+*.cbp
+libjson-c-static.a
+
