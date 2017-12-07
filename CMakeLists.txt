@@ -56,6 +56,7 @@ if (cmake_create_config)
 endif ()
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/include)
+set(LIB_JSON_C_DIR ${CMAKE_CURRENT_SOURCE_DIR} CACHE INTERNAL "json-c library" FORCE)
 
 set(JSON_C_PUBLIC_HEADERS
     ./json.h
