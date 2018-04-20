@@ -89,7 +89,7 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="json.def">
+    <None Include="json-c.def">
       <Filter>Source Files</Filter>
     </None>
   </ItemGroup>
