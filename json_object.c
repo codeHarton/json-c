@@ -15,6 +15,7 @@
 #include "strerror_override.h"
 
 #include <assert.h>
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stddef.h>
@@ -169,6 +170,9 @@ extern struct json_object* json_object_get(struct json_object *jso)
 {
 	if (!jso) return jso;
 
+	// Don't overflow the refcounter.
+	assert(jso->_ref_count < UINT32_MAX);
+
 #if defined(HAVE_ATOMIC_BUILTINS) && defined(ENABLE_THREADING)
 	__sync_add_and_fetch(&jso->_ref_count, 1);
 #else
@@ -181,6 +185,11 @@ extern struct json_object* json_object_get(struct json_object *jso)
 int json_object_put(struct json_object *jso)
 {
 	if(!jso) return 0;
+
+	/* Avoid invalid free and crash explicitly instead of (silently)
+	 * segfaulting.
+	 */
+	assert(jso->_ref_count > 0);
 
 #if defined(HAVE_ATOMIC_BUILTINS) && defined(ENABLE_THREADING)
 	/* Note: this only allow the refcount to remain correct
@@ -386,7 +395,7 @@ static int json_object_object_to_json_string(struct json_object* jso,
 				printbuf_strappend(pb, "\n");
 		}
 		had_children = 1;
-		if (flags & JSON_C_TO_STRING_SPACED)
+		if (flags & JSON_C_TO_STRING_SPACED && !(flags & JSON_C_TO_STRING_PRETTY))
 			printbuf_strappend(pb, " ");
 		indent(pb, level+1, flags);
 		printbuf_strappend(pb, "\"");
@@ -407,7 +416,7 @@ static int json_object_object_to_json_string(struct json_object* jso,
 			printbuf_strappend(pb, "\n");
 		indent(pb,level,flags);
 	}
-	if (flags & JSON_C_TO_STRING_SPACED)
+	if (flags & JSON_C_TO_STRING_SPACED && !(flags & JSON_C_TO_STRING_PRETTY))
 		return printbuf_strappend(pb, /*{*/ " }");
 	else
 		return printbuf_strappend(pb, /*{*/ "}");
@@ -509,6 +518,11 @@ int json_object_object_length(const struct json_object *jso)
 	return lh_table_length(jso->o.c_object);
 }
 
+size_t json_c_object_sizeof(void)
+{
+	return sizeof(struct json_object);
+}
+
 struct json_object* json_object_object_get(const struct json_object* jso,
 					   const char *key)
 {
@@ -524,7 +538,7 @@ json_bool json_object_object_get_ex(const struct json_object* jso, const char *k
 		*value = NULL;
 
 	if (NULL == jso)
-		return FALSE;
+		return 0;
 
 	switch(jso->o_type)
 	{
@@ -534,7 +548,7 @@ json_bool json_object_object_get_ex(const struct json_object* jso, const char *k
 	default:
 		if (value != NULL)
 			*value = NULL;
-		return FALSE;
+		return 0;
 	}
 }
 
@@ -570,7 +584,7 @@ struct json_object* json_object_new_boolean(json_bool b)
 json_bool json_object_get_boolean(const struct json_object *jso)
 {
 	if (!jso)
-		return FALSE;
+		return 0;
 	switch(jso->o_type)
 	{
 	case json_type_boolean:
@@ -582,7 +596,7 @@ json_bool json_object_get_boolean(const struct json_object *jso)
 	case json_type_string:
 		return (jso->o.c_string.len != 0);
 	default:
-		return FALSE;
+		return 0;
 	}
 }
 
@@ -777,7 +791,6 @@ static int json_object_double_to_json_string_format(struct json_object* jso,
 {
 	char buf[128], *p, *q;
 	int size;
-	double dummy; /* needed for modf() */
 	/* Although JSON RFC does not support
 	NaN or Infinity as numeric values
 	ECMA 262 section 9.8.1 defines
@@ -796,44 +809,60 @@ static int json_object_double_to_json_string_format(struct json_object* jso,
 	else
 	{
 		const char *std_format = "%.17g";
+		int format_drops_decimals = 0;
 
-#if defined(HAVE___THREAD)
-		if (tls_serialization_float_format)
-			std_format = tls_serialization_float_format;
-		else
-#endif
-		if (global_serialization_float_format)
-			std_format = global_serialization_float_format;
 		if (!format)
-			format = std_format;
-		size = snprintf(buf, sizeof(buf), format, jso->o.c_double);
-		if (modf(jso->o.c_double, &dummy) == 0  && size >= 0 && size < (int)sizeof(buf) - 2)
 		{
-			// Ensure it looks like a float, even if snprintf didn't.
+#if defined(HAVE___THREAD)
+			if (tls_serialization_float_format)
+				format = tls_serialization_float_format;
+			else
+#endif
+			if (global_serialization_float_format)
+				format = global_serialization_float_format;
+			else
+				format = std_format;
+		}
+		size = snprintf(buf, sizeof(buf), format, jso->o.c_double);
+
+		if (size < 0)
+			return -1;
+
+		p = strchr(buf, ',');
+		if (p)
+			*p = '.';
+		else
+			p = strchr(buf, '.');
+
+		if (format == std_format || strstr(format, ".0f") == NULL)
+			format_drops_decimals = 1;
+
+		if (size < (int)sizeof(buf) - 2 &&
+		    isdigit((unsigned char)buf[0]) && /* Looks like *some* kind of number */
+			!p && /* Has no decimal point */
+		    strchr(buf, 'e') == NULL && /* Not scientific notation */
+			format_drops_decimals)
+		{
+			// Ensure it looks like a float, even if snprintf didn't,
+			//  unless a custom format is set to omit the decimal.
 			strcat(buf, ".0");
 			size += 2;
+		}
+		if (p && (flags & JSON_C_TO_STRING_NOZERO))
+		{
+			/* last useful digit, always keep 1 zero */
+			p++;
+			for (q=p ; *q ; q++) {
+				if (*q!='0') p=q;
+			}
+			/* drop trailing zeroes */
+			*(++p) = 0;
+			size = p-buf;
 		}
 	}
 	// although unlikely, snprintf can fail
 	if (size < 0)
 		return -1;
-
-	p = strchr(buf, ',');
-	if (p)
-		*p = '.';
-	else
-		p = strchr(buf, '.');
-	if (p && (flags & JSON_C_TO_STRING_NOZERO))
-	{
-		/* last useful digit, always keep 1 zero */
-		p++;
-		for (q=p ; *q ; q++) {
-			if (*q!='0') p=q;
-		}
-		/* drop trailing zeroes */
-		*(++p) = 0;
-		size = p-buf;
-	}
 
 	if (size >= (int)sizeof(buf))
 		// The standard formats are guaranteed not to overrun the buffer,
@@ -922,7 +951,10 @@ double json_object_get_double(const struct json_object *jso)
 
     /* if conversion stopped at the first character, return 0.0 */
     if (errPtr == get_string_component(jso))
-        return 0.0;
+    {
+      errno = EINVAL;
+      return 0.0;
+    }
 
     /*
      * Check that the conversion terminated on something sensible
@@ -930,7 +962,10 @@ double json_object_get_double(const struct json_object *jso)
      * For example, { "pay" : 123AB } would parse as 123.
      */
     if (*errPtr != '\0')
-        return 0.0;
+    {
+      errno = EINVAL;
+      return 0.0;
+    }
 
     /*
      * If strtod encounters a string which would exceed the
@@ -948,6 +983,7 @@ double json_object_get_double(const struct json_object *jso)
             cdouble = 0.0;
     return cdouble;
   default:
+    errno = EINVAL;
     return 0.0;
   }
 }
@@ -1001,7 +1037,7 @@ struct json_object* json_object_new_string(const char *s)
 	return jso;
 }
 
-struct json_object* json_object_new_string_len(const char *s, int len)
+struct json_object* json_object_new_string_len(const char *s, const int len)
 {
 	char *dstbuf;
 	struct json_object *jso = json_object_new(json_type_string);
@@ -1098,7 +1134,7 @@ static int json_object_array_to_json_string(struct json_object* jso,
 				printbuf_strappend(pb, "\n");
 		}
 		had_children = 1;
-		if (flags & JSON_C_TO_STRING_SPACED)
+		if (flags & JSON_C_TO_STRING_SPACED && !(flags&JSON_C_TO_STRING_PRETTY))
 			printbuf_strappend(pb, " ");
 		indent(pb, level + 1, flags);
 		val = json_object_array_get_idx(jso, ii);
@@ -1115,7 +1151,7 @@ static int json_object_array_to_json_string(struct json_object* jso,
 		indent(pb,level,flags);
 	}
 
-	if (flags & JSON_C_TO_STRING_SPACED)
+	if (flags & JSON_C_TO_STRING_SPACED && !(flags&JSON_C_TO_STRING_PRETTY))
 		return printbuf_strappend(pb, " ]");
 	return printbuf_strappend(pb, "]");
 }

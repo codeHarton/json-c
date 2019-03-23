@@ -29,6 +29,7 @@
 #include "arraylist.h"
 #include "json_inttypes.h"
 #include "json_object.h"
+#include "json_object_private.h"
 #include "json_tokener.h"
 #include "json_util.h"
 #include "strdup_compat.h"
@@ -94,7 +95,7 @@ const char *json_tokener_error_desc(enum json_tokener_error jerr)
 	return json_tokener_errors[jerr];
 }
 
-enum json_tokener_error json_tokener_get_error(json_tokener *tok)
+enum json_tokener_error json_tokener_get_error(struct json_tokener *tok)
 {
 	return tok->err;
 }
@@ -294,7 +295,7 @@ struct json_object* json_tokener_parse_ex(struct json_tokener *tok,
 
     case json_tokener_state_eatws:
       /* Advance until we change state */
-      while (isspace((int)c)) {
+      while (isspace((unsigned char)c)) {
 	if ((!ADVANCE_CHAR(str, tok)) || (!PEEK_CHAR(c, tok)))
 	  goto out;
       }

@@ -9,6 +9,10 @@
  *
  */
 
+/**
+ * @file
+ * @brief Methods to parse an input string into a tree of json_object objects.
+ */
 #ifndef _json_tokener_h_
 #define _json_tokener_h_
 
@@ -86,6 +90,10 @@ struct json_tokener
   struct json_tokener_srec *stack;
   int flags;
 };
+/**
+ * @deprecated Unused in json-c code
+ */
+typedef struct json_tokener json_tokener;
 
 /**
  * Be strict when parsing JSON input.  Use caution with
@@ -114,7 +122,7 @@ const char *json_tokener_error_desc(enum json_tokener_error jerr);
  * When parsing a JSON string in pieces, if the tokener is in the middle
  * of parsing this will return json_tokener_continue.
  *
- * See also json_tokener_error_desc().
+ * @see json_tokener_error_desc().
  */
 JSON_EXPORT enum json_tokener_error json_tokener_get_error(struct json_tokener *tok);
 
@@ -147,9 +155,10 @@ JSON_EXPORT void json_tokener_set_flags(struct json_tokener *tok, int flags);
  * called.
  *
  * When a valid JSON value is parsed, a non-NULL json_object will be
- * returned.  Also, json_tokener_get_error() will return json_tokener_success.
- * Be sure to check the type with json_object_is_type() or
- * json_object_get_type() before using the object.
+ * returned, with a reference count of one which belongs to the caller.  Also,
+ * json_tokener_get_error() will return json_tokener_success. Be sure to check
+ * the type with json_object_is_type() or json_object_get_type() before using
+ * the object.
  *
  * @b XXX this shouldn't use internal fields:
  * Trailing characters after the parsed value do not automatically cause an

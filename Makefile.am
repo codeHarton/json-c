@@ -1,3 +1,5 @@
+ACLOCAL_AMFLAGS = -I autoconf-archive/m4
+
 EXTRA_DIST = README.md README.html
 EXTRA_DIST += config.h.win32
 EXTRA_DIST += Doxyfile
@@ -18,7 +20,6 @@ pkgconfig_DATA = json-c.pc
 libjson_cincludedir = $(includedir)/json-c
 libjson_cinclude_HEADERS = \
 	arraylist.h \
-	bits.h \
 	debug.h \
 	json.h \
 	json_c_version.h \
@@ -26,21 +27,23 @@ libjson_cinclude_HEADERS = \
 	json_inttypes.h \
 	json_object.h \
 	json_object_iterator.h \
-	json_object_private.h \
 	json_pointer.h \
 	json_tokener.h \
 	json_util.h \
 	json_visit.h \
 	linkhash.h \
+	printbuf.h
+
+noinst_HEADERS=\
+	json_object_private.h \
 	math_compat.h \
 	strdup_compat.h \
 	snprintf_compat.h \
 	vasprintf_compat.h \
-	printbuf.h \
 	random_seed.h \
 	strerror_override.h
 
-libjson_c_la_LDFLAGS = -version-info 3:0:0 -no-undefined @JSON_BSYMBOLIC_LDFLAGS@
+libjson_c_la_LDFLAGS = -version-info 4:0:0 -no-undefined @JSON_BSYMBOLIC_LDFLAGS@
 
 libjson_c_la_SOURCES = \
 	arraylist.c \
