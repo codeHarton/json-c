@@ -166,7 +166,7 @@ static int json_escape_str(struct printbuf *pb, const char *str, int len, int fl
 
 /* reference counting */
 
-extern struct json_object* json_object_get(struct json_object *jso)
+struct json_object* json_object_get(struct json_object *jso)
 {
 	if (!jso) return jso;
 
@@ -701,7 +701,9 @@ int64_t json_object_get_int64(const struct json_object *jso)
 	case json_type_int:
 		return jso->o.c_int64;
 	case json_type_double:
-		if (jso->o.c_double >= INT64_MAX)
+		// INT64_MAX can't be exactly represented as a double
+		// so cast to tell the compiler it's ok to round up.
+		if (jso->o.c_double >= (double)INT64_MAX)
 			return INT64_MAX;
 		if (jso->o.c_double <= INT64_MIN)
 			return INT64_MIN;
@@ -810,6 +812,7 @@ static int json_object_double_to_json_string_format(struct json_object* jso,
 	{
 		const char *std_format = "%.17g";
 		int format_drops_decimals = 0;
+		int looks_numeric = 0;
 
 		if (!format)
 		{
@@ -837,11 +840,15 @@ static int json_object_double_to_json_string_format(struct json_object* jso,
 		if (format == std_format || strstr(format, ".0f") == NULL)
 			format_drops_decimals = 1;
 
+		looks_numeric = /* Looks like *some* kind of number */
+		    isdigit((unsigned char)buf[0]) ||
+		    (size > 1 && buf[0] == '-' && isdigit((unsigned char)buf[1]));
+
 		if (size < (int)sizeof(buf) - 2 &&
-		    isdigit((unsigned char)buf[0]) && /* Looks like *some* kind of number */
-			!p && /* Has no decimal point */
+		    looks_numeric &&
+		    !p && /* Has no decimal point */
 		    strchr(buf, 'e') == NULL && /* Not scientific notation */
-			format_drops_decimals)
+		    format_drops_decimals)
 		{
 			// Ensure it looks like a float, even if snprintf didn't,
 			//  unless a custom format is set to omit the decimal.
