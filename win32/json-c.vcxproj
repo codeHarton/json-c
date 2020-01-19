@@ -20,7 +20,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\arraylist.h" />
-    <ClInclude Include="..\bits.h" />
     <ClInclude Include="..\debug.h" />
     <ClInclude Include="..\json.h" />
     <ClInclude Include="..\json_c_version.h" />
