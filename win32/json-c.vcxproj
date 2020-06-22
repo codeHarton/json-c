@@ -61,6 +61,8 @@
     <ClCompile Include="..\printbuf.c" />
     <ClCompile Include="..\random_seed.c" />
     <ClCompile Include="..\strerror_override.c" />
+    <ClCompile Include="strtoll.c" />
+    <ClCompile Include="strtoull.c" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{F1F4BA6A-0368-4F34-95BB-C29A2244A772}</ProjectGuid>
