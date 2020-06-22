@@ -76,6 +76,8 @@ include(CPack)
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 
+set(LIB_JSON_C_DIR ${CMAKE_CURRENT_SOURCE_DIR} CACHE INTERNAL "json-c library" FORCE)
+
 option(BUILD_SHARED_LIBS  "Default to building shared libraries" OFF)
 option(BUILD_STATIC_LIBS  "Default to building static libraries" ON)
 
