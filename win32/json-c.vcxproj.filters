@@ -133,5 +133,11 @@
     <ClCompile Include="..\strerror_override.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="strtoull.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="strtoll.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

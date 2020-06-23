@@ -203,3 +203,15 @@
 
 /* Define to `unsigned int' if <sys/types.h> does not define. */
 /* #undef size_t */
+
+#if defined(_MSC_VER) && (_MSC_VER < 1800)
+
+#include <ctype.h>
+#include <limits.h>
+
+long long strtoll(const char *nptr, char **endptr, register int base);
+
+unsigned long long strtoull(const char *nptr, char **endptr, register int base);
+
+#endif // defined(_MSC_VER) && (_MSC_VER < 1800)
+
